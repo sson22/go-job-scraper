@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -11,24 +12,34 @@ import (
 var baseURL string = "https://au.indeed.com/jobs?q=software&limit=50"
 
 func main(){
-	pages := getPages()
-	fmt.Println(pages)
+	totalPages := countPages()
+	fmt.Println(totalPages)
+
+	for i :=0; i < totalPages; i++ {
+		getPage(i)
+	}
 
 }
-
-//Get pages using goquery
-func getPages() int {
+func getPage(pageNumber int) {
+	pageURL := baseURL + "&start="+ strconv.Itoa(pageNumber*50)
+	fmt.Println(pageURL)
+}
+//Get number of pages to inspect on URL using goquery
+func countPages() int {
+	pages := 0
 	res, err := http.Get(baseURL)
 	checkError(err)
 	checkStatusCode(res)
-
 	//Close function to prevent memory leak
 	defer res.Body.Close()
 	doc, err := goquery.NewDocumentFromReader(res.Body)
-	checkError(err)
+	checkError(err) 
 	//Find div that has classname pagination from the URL
-	doc.Find(".pagination").Each()
-	return 0
+	doc.Find(".pagination").Each(func(i int, s *goquery.Selection){
+		//Count number of pages on the URL
+		pages = s.Find("a").Length()
+	})
+	return pages
 }
 
 //Check error and log the error

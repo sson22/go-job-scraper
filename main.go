@@ -1,9 +1,11 @@
 package main
 
 import (
+	"encoding/csv"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -19,18 +21,40 @@ type extractedJob struct {
 	description string
 }
 var baseURL string = "https://au.indeed.com/jobs?q=software&limit=50"
+var applyLinkURL string = "https://au.indeed.com/viewjob?jk="
 
 func main(){
 	var totalJobs []extractedJob
 	totalPages := countPages()
+	//Merge extracted jobs from each page
 	for i :=0; i < totalPages; i++ {
 		extractedJobs :=getPage(i)
 		totalJobs = append(totalJobs, extractedJobs...)
 	}
-	fmt.Println(totalJobs)
+	writeJobs(totalJobs)
+
+	fmt.Println("Job extraction done for total", len(totalJobs),"jobs" )
 
 }
 
+//Wrtie jobs on file
+func writeJobs(jobs[] extractedJob){
+	file, err := os.Create("jobs.csv")
+	checkError(err)
+	w:= csv.NewWriter(file)
+	//Flush data on the file
+	defer w.Flush()
+
+	headers := []string{"LINK","Title","Location","Company","Salary","Description"}
+	wErr := w.Write(headers)
+	checkError(wErr) 
+
+	for _, job := range jobs {
+		jobSlice := []string{applyLinkURL + job.id, job.title, job.location, job.company, job.salary, job.description}
+		jobWErr := w.Write(jobSlice)
+		checkError(jobWErr)
+	}
+}
 //Get each page and find each job-id
 func getPage(pageNumber int)[]extractedJob {
 	var jobs []extractedJob

@@ -25,7 +25,7 @@ func main(){
 	e.GET("/", handleHome)
 	e.POST("/scrape", handleScrape)
 	godotenv.Load()
-	port:=os.Getenv("PORT")
+	port:= ":"+os.Getenv("PORT")
 	e.Logger.Fatal(e.Start(port))
 
 

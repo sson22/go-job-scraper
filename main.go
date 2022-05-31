@@ -4,6 +4,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/joho/godotenv"
 	"github.com/labstack/echo"
 	"github.com/sson22/job-scrapper/scraper"
 )
@@ -23,7 +24,9 @@ func main(){
 	e := echo.New()
 	e.GET("/", handleHome)
 	e.POST("/scrape", handleScrape)
-	e.Logger.Fatal(e.Start(":1323"))
+	godotenv.Load()
+	port:=os.Getenv("PORT")
+	e.Logger.Fatal(e.Start(port))
 
 
 	

@@ -13,6 +13,7 @@ const fileName string = "jobs.csv"
 func handleHome(c echo.Context) error {
 	return c.File("home.html")
 }
+
 func handleScrape(c echo.Context) error{
 	defer os.Remove(fileName)
 	keywords := strings.ToLower(scraper.CleanString(c.FormValue("keywords")))
@@ -22,12 +23,11 @@ func handleScrape(c echo.Context) error{
 func main(){
  
 	e := echo.New()
+	e.Static("/css", "css")
 	e.GET("/", handleHome)
 	e.POST("/scrape", handleScrape)
 	godotenv.Load()
 	port:= ":"+os.Getenv("PORT")
 	e.Logger.Fatal(e.Start(port))
-
-
 	
 }

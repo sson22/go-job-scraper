@@ -26,12 +26,19 @@ func Scrape(keyword string){
 	var baseURL string = "https://au.indeed.com/jobs?q="+keyword+"&limit=50"
 
 	var totalJobs []extractedJob
+	c := make(chan []extractedJob)
 	totalPages := countPages(baseURL)
 	//Merge extracted jobs from each page
 	for i :=0; i < totalPages; i++ {
-		extractedJobs :=getPage(i, baseURL)
+		//Create 5 * Go channel between main() and getpages() to execute functions concurrently
+		go getPage(i, baseURL, c)
+	}
+
+	for i := 0 ; i < totalPages; i++ {
+		extractedJobs := <-c
 		totalJobs = append(totalJobs, extractedJobs...)
 	}
+
 	writeJobs(totalJobs)
 
 	fmt.Println("Job extraction done for total", len(totalJobs),"jobs" )
@@ -57,8 +64,9 @@ func writeJobs(jobs[] extractedJob){
 	}
 }
 //Get each page and find each job-id
-func getPage(pageNumber int, baseURL string)[]extractedJob {
+func getPage(pageNumber int, baseURL string, mainC chan<- []extractedJob) {
 	var jobs []extractedJob
+	c := make (chan extractedJob)
 	pageURL := baseURL + "&start="+ strconv.Itoa(pageNumber*50)
 	res, err := http.Get(pageURL)
 	checkError(err)
@@ -70,20 +78,25 @@ func getPage(pageNumber int, baseURL string)[]extractedJob {
 	//Find id of each job and extract job information
 	searchCards := doc.Find(".cardOutline")
 	searchCards.Each(func(i int, card *goquery.Selection){
-		job := extractJob(card)
-		jobs = append(jobs, job)
+		//Create 50 * Go routines between getPages() and extractJob() to execute the function concurrently
+		go extractJob(card, c)
+		
 	})
-	return jobs
+	for i:=0; i < searchCards.Length(); i++ {
+		job := <- c
+		jobs = append(jobs, job)
+	}
+	mainC <- jobs
 }
 //Extract job information
-func extractJob(card *goquery.Selection) extractedJob{
+func extractJob(card *goquery.Selection, c chan<- extractedJob) {
 	id, _ := card.Find(".jcs-JobTitle").Attr("data-jk")
 	title := CleanString(card.Find(".jcs-JobTitle>span").Text())
 	location := CleanString(card.Find(".companyLocation").Text())
 	company := CleanString(card.Find(".companyName").Text())
 	salary := CleanString(card.Find(".salary-snippet-container>.attribute_snippet").Text())
 	description := CleanString(card.Find(".job-snippet>ul>li").Text())
-	return extractedJob{id:id, title:title, location:location, company:company, salary: salary, description:description}
+	c <- extractedJob{id:id, title:title, location:location, company:company, salary: salary, description:description}
 }
 //Get number of pages to inspect on URL using goquery
 func countPages(baseURL string) int {
